@@ -12,11 +12,11 @@ concurrency:
 
 jobs:
   test:
-    name: Tests (Kern und Frontend)
+    name: Tests (Kern, IPC und Frontend)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -24,21 +24,26 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+      - name: Systempakete für Tauri unter Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev libssl-dev librsvg2-dev
       - run: npm ci
-      - run: npm run assets
       - run: npm run typecheck
       - run: npm test
-      - name: Kern-Tests (echte SQLite-Dateien)
+      - name: Frontend bauen (für IPC-Tests mit echtem Kontext)
+        run: npm run build
+      - name: Kern- und IPC-Tests (echte SQLite-Dateien, Tauri-Mock-Runtime, Berechtigungen)
         working-directory: src-tauri
-        run: cargo test -p campus-core
+        run: cargo test --workspace
 
   windows:
     name: Windows-Installer
     needs: test
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -47,11 +52,11 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
-      - name: Assets bereitstellen (für IPC-Tests mit echtem Kontext)
-        run: npm run build
-      - name: Kern- und IPC-Tests unter Windows (Dateisperren, Pfade, NTFS, Berechtigungen)
+      # Nur der Kern: Testprogramme der Tauri-Schicht brauchen unter Windows ein eingebettetes
+      # App-Manifest (sonst STATUS_ENTRYPOINT_NOT_FOUND); die IPC-Tests laufen im Linux-Job.
+      - name: Kern-Tests unter Windows (Dateisperren, Pfade, NTFS)
         working-directory: src-tauri
-        run: cargo test --workspace
+        run: cargo test -p campus-core
       - name: Installer bauen (NSIS und MSI, WebView2 offline eingebettet)
         run: npm run app:build
       - name: Prüfsummen erzeugen
