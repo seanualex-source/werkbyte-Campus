@@ -1,0 +1,9 @@
+node_modules/
+dist/
+public/pdfjs/
+public/fonts/
+tests/output/
+src-tauri/target/
+src-tauri/gen/
+*.log
+.DS_Store

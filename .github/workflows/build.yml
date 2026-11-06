@@ -1,0 +1,70 @@
+name: Build und Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (Kern und Frontend)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm run assets
+      - run: npm run typecheck
+      - run: npm test
+      - name: Kern-Tests (echte SQLite-Dateien)
+        working-directory: src-tauri
+        run: cargo test -p campus-core
+
+  windows:
+    name: Windows-Installer
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - name: Assets bereitstellen (für IPC-Tests mit echtem Kontext)
+        run: npm run build
+      - name: Kern- und IPC-Tests unter Windows (Dateisperren, Pfade, NTFS, Berechtigungen)
+        working-directory: src-tauri
+        run: cargo test --workspace
+      - name: Installer bauen (NSIS und MSI, WebView2 offline eingebettet)
+        run: npm run app:build
+      - name: Prüfsummen erzeugen
+        shell: pwsh
+        run: |
+          Get-ChildItem src-tauri/target/release/bundle -Recurse -Include *.exe,*.msi |
+            ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name } |
+            Out-File -Encoding utf8 src-tauri/target/release/bundle/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: werkbyte-campus-windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/SHA256SUMS.txt
+          if-no-files-found: error

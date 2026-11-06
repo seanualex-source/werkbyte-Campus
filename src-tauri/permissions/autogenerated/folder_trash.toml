@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-folder-trash"
+description = "Enables the folder_trash command without any pre-configured scope."
+commands.allow = ["folder_trash"]
+
+[[permission]]
+identifier = "deny-folder-trash"
+description = "Denies the folder_trash command without any pre-configured scope."
+commands.deny = ["folder_trash"]

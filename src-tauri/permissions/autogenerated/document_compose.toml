@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-document-compose"
+description = "Enables the document_compose command without any pre-configured scope."
+commands.allow = ["document_compose"]
+
+[[permission]]
+identifier = "deny-document-compose"
+description = "Denies the document_compose command without any pre-configured scope."
+commands.deny = ["document_compose"]
